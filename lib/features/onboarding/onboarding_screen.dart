@@ -1,0 +1,325 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:iconly/iconly.dart';
+import 'package:shoes_app/core/app_constants.dart';
+import 'package:shoes_app/features/bottom_app_bar/bottom_app_bar.dart';
+
+class OnboardingScreen extends StatefulWidget {
+  const OnboardingScreen({super.key});
+
+  @override
+  State<OnboardingScreen> createState() => _OnboardingScreenState();
+}
+
+class _OnboardingScreenState extends State<OnboardingScreen>
+    with SingleTickerProviderStateMixin {
+  int selectedIndex = 0;
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+  late PageController pageController;
+
+  // Track if images are already cached
+  bool _imagesCached = false;
+
+  List<Map<String, dynamic>> onboardingList = [
+    {
+      "image": AppConstants.onboardingImage1,
+      "title": "Follow Latest Style Shoes to Follow the Trend",
+      "description":
+          "Step into a world of style with our revolutionary fashion app - your ultimate destination for trendsetting looks and curated collections."
+    },
+    {
+      "image": AppConstants.onboardingImage2,
+      "title": "Discover Exclusive Shoe Collections",
+      "description":
+          "Unveil a curated selection of exclusive shoes designed to elevate your wardrobe with unmatched elegance and comfort."
+    },
+    {
+      "image": AppConstants.onboardingImage3,
+      "title": "Stay Ahead with Fashion Updates",
+      "description":
+          "Get the latest fashion insights and shoe trends delivered to you, ensuring you're always one step ahead in style."
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize PageController
+    pageController = PageController(initialPage: 0);
+
+    // Initialize AnimationController with faster duration
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+
+    // Create fade animation from 0 to 1
+    _fadeAnimation = Tween<double>(begin: 0.7, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
+    );
+
+    // Start the animation initially
+    _fadeController.forward();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Precache images only once after context is available
+    if (!_imagesCached) {
+      _precacheImages();
+      _imagesCached = true;
+    }
+  }
+
+  void _precacheImages() {
+    // Pre-cache all images to avoid loading delays
+    for (var item in onboardingList) {
+      precacheImage(AssetImage(item["image"]), context);
+    }
+
+    // Also precache logo
+    precacheImage(AssetImage(AppConstants.appLogo), context);
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    pageController.dispose();
+    super.dispose();
+  }
+
+  void _changeIndex(int newIndex) {
+    setState(() {
+      selectedIndex = newIndex;
+    });
+
+    // Only animate page if the controller is attached to the PageView
+    if (pageController.hasClients) {
+      pageController.animateToPage(
+        newIndex,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOut,
+      );
+    }
+
+    _fadeController.reset();
+    _fadeController.forward();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final height = MediaQuery.of(context).size.height;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Column(
+        children: [
+          const SizedBox(height: 4),
+          Expanded(
+            child: PageView.builder(
+              controller: pageController,
+              onPageChanged: (index) {
+                setState(() {
+                  selectedIndex = index;
+                  _fadeController.reset();
+                  _fadeController.forward();
+                });
+              },
+              itemCount: onboardingList.length,
+              itemBuilder: (context, index) {
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                  width: double.infinity,
+                  clipBehavior: Clip.antiAlias,
+                  height: height * 0.6,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topRight: Radius.circular(50),
+                      topLeft: Radius.circular(50),
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Stack(
+                    children: [
+                      // Base image - always visible
+                      Positioned.fill(
+                        child: Image.asset(
+                          onboardingList[index]["image"],
+                          fit: BoxFit.cover,
+                          gaplessPlayback: true,
+                        ),
+                      ),
+
+                      // Animated overlay for transitions
+                      if (index == selectedIndex)
+                        Positioned.fill(
+                          child: FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: Container(
+                              color: Colors.transparent,
+                            ),
+                          ),
+                        ),
+
+                      // Logo with optimized loading
+                      Positioned(
+                        top: 50,
+                        left: 20,
+                        child: Image.asset(
+                          AppConstants.appLogo,
+                          color: index == 2 ? Colors.white : null,
+                          height: 60,
+                          width: 120,
+                          gaplessPlayback: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 8),
+            height: 230,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(30),
+              color: Color(0xffFEE78E),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                children: [
+                  FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: Text(
+                      onboardingList[selectedIndex]["title"],
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: GoogleFonts.notable().fontFamily,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: Text(
+                      onboardingList[selectedIndex]["description"],
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.black38,
+                        fontWeight: FontWeight.w400,
+                        fontFamily: GoogleFonts.roboto().fontFamily,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 8),
+            height: 125,
+            decoration: const BoxDecoration(
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+                bottomLeft: Radius.circular(70),
+                bottomRight: Radius.circular(70),
+              ),
+              color: Colors.white,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(width: 30),
+                selectedIndex == 0
+                    ? Text(
+                        "Next",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                          fontFamily: GoogleFonts.roboto().fontFamily,
+                        ),
+                      )
+                    : GestureDetector(
+                        onTap: () {
+                          if (selectedIndex > 0) {
+                            _changeIndex(selectedIndex - 1);
+                          }
+                        },
+                        child: Container(
+                          height: 50,
+                          width: 50,
+                          decoration: BoxDecoration(
+                            color: Colors.black,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              IconlyLight.arrow_left,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                      ),
+                const Spacer(),
+                Image.asset(
+                  AppConstants.appLogo,
+                  color: Colors.grey.shade500,
+                  height: 60,
+                  width: 120,
+                  gaplessPlayback: true,
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () {
+                    if (selectedIndex < onboardingList.length - 1) {
+                      _changeIndex(selectedIndex + 1);
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CustomBottomAppBar(),
+                        ),
+                      );
+                    }
+                  },
+                  child: Container(
+                    height: 50,
+                    width: 50,
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        IconlyLight.arrow_right,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 30),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
